@@ -5,6 +5,9 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 from django.utils.timesince import timesince
 
+from account.models import User
+
+from .models import Room, Message
 from .templatetags.chatextras import initials
 
 
@@ -14,6 +17,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.room_group_name = f'chat_{self.room_name}'
 
         # Join room group
+        await self.get_room()
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
@@ -32,6 +36,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         print('Receive')
 
         if type == 'message':
+            new_message = await self.create_message(name, message, agent)
+
             # Send message to group / room
             await self.channel_layer.group_send(
                 self.room_group_name, {
@@ -40,7 +46,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'name': name,
                     'agent': agent,
                     'initials': initials(name),
-                    'created_at': '', # timesince(new_message.created_at),
+                    'created_at': timesince(new_message.created_at),
                 })
 
     async def chat_message(self, event):
@@ -53,3 +59,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'initials': event['initials'],
             'created_at': event['created_at'],
         }))
+
+
+    @sync_to_async
+    def get_room(self):
+        self.room = Room.objects.get(uuid=self.room_name)
+
+    @sync_to_async
+    def create_message(self, sent_by, message, agent):
+        message = Message.objects.create(body=message, sent_by=sent_by)
+
+        if agent:
+            message.created_by = User.objects.get(pk=agent)
+            message.save()
+
+        self.room.messages.add(message)
+
+        return message
