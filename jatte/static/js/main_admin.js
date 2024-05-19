@@ -18,6 +18,10 @@ const chatSubmitElement = document.querySelector('#chat_message_submit')
  * Functions
  */
 
+function scrollToBottom() {
+    chatLogElement.scrollTop = chatLogElement.scrollHeight
+}
+
 function sendMessage() {
     chatSocket.send(JSON.stringify({
         'type': 'message',
@@ -71,6 +75,8 @@ function onChatMessage(data) {
             `
         }
     }
+
+    scrollToBottom()
 }
 
 
@@ -104,4 +110,10 @@ chatSubmitElement.onclick = function(e){
     sendMessage()
 
     return false
+}
+
+chatInputElement.onkeyup = function(e) {
+    if (e.keyCode == 13) {
+        sendMessage()
+    }
 }
