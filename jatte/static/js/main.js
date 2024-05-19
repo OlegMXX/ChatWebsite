@@ -27,6 +27,7 @@ const chatSubmitElement = document.querySelector('#chat_message_submit')
  */
 
 function getCookie(name) {
+    console.log('getCookie')
     var cookieValue = null
 
     if (document.cookie && document.cookie != '') {
@@ -36,13 +37,15 @@ function getCookie(name) {
             var cookie = cookies[i].trim()
 
             if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length +1))
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1))
 
                 break
             }
         }
+    } else {
+        console.log('empty cookie')
     }
-
+    
     return cookieValue
 }
 
