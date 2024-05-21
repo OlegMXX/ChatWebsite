@@ -104,6 +104,8 @@ function onChatMessage(data) {
                 </div>
             `
         }
+    } else if (data.type == 'users_update') {
+        chatLogElement.innerHTML += '<p class="mt-2">The admin/agent has joined the chat!'
     }
 
     scrollToBottom()
