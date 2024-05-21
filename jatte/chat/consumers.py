@@ -15,15 +15,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'chat_{self.room_name}'
+        self.user = self.scope['user'] # the same as request.user but in WebsocketConsumer
 
         # Join room group
         await self.get_room()
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
+        # Inform user
+        if self.user.is_staff:
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'users_update',
+                }
+            )
+
     async def disconnect(self, close_code):
         # Leavee room
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+
+        if not self.user.is_staff:
+            await self.set_room_closed()
 
     async def receive(self, text_data):
         # receive message from WebSocket (frontend)
@@ -48,6 +61,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'initials': initials(name),
                     'created_at': timesince(new_message.created_at),
                 })
+        elif type == 'update':
+            print('is update')
+            # Send update to the room
+            await self.channel_layer.group_send(
+                self.room_group_name, {
+                    'type': 'writing_active',
+                    'message': message,
+                    'name': name,
+                    'agent': agent,
+                    'initials': initials(name),
+                }
+            )
 
     async def chat_message(self, event):
         # Send message to Websocket (frontend)
@@ -60,10 +85,32 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'created_at': event['created_at'],
         }))
 
+    async def writing_active(self, event):
+        # Send writing is active to room
+        await self.send(text_data=json.dumps({
+            'type': event['type'],
+            'message': event['message'],
+            'name': event['name'],
+            'agent': event['agent'],
+            'initials': event['initials'],
+        }))
+
+    async def users_update(self, event):
+        # Send information to the websocket frontend
+        await self.send(text_data=json.dumps({
+            'type': 'users_update'
+        }))
+
 
     @sync_to_async
     def get_room(self):
         self.room = Room.objects.get(uuid=self.room_name)
+
+    @sync_to_async
+    def set_room_closed(self):
+        self.room = Room.objects.get(uuid=self.room_name) # in previous time we got it the room has no attribute agent
+        self.room.status = Room.CLOSED
+        self.room.save()
 
     @sync_to_async
     def create_message(self, sent_by, message, agent):
