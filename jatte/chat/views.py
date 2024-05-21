@@ -56,6 +56,30 @@ def user_detail(request, uuid):
         'rooms': rooms
     })
 
+@login_required
+def edit_user(request, uuid):
+    if request.user.has_perm('user.edit_user'):
+        user = User.objects.get(pk=uuid)
+
+        if request.method == 'POST':
+            form = EditUserForm(request.POST, instance=user)
+
+            if form.is_valid():
+                form.save()
+
+                messages.success(request, 'The changes was saved successfully')
+                return redirect('/chat-admin/')
+        else:
+            form = EditUserForm(instance=user)
+
+        return render(request, 'chat/edit_user.html', {
+            'user': user,
+            'form': form
+        })
+    else:
+        messages.error(request, 'You do not have permission to edit users.')
+
+        return redirect('/chat-admin/')
 
 @login_required
 def add_user(request):
