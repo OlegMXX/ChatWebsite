@@ -71,6 +71,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @sync_to_async
     def set_room_closed(self):
+        self.room = Room.objects.get(uuid=self.room_name) # in previous time we got it the room has no attribute agent
         self.room.status = Room.CLOSED
         self.room.save()
 
