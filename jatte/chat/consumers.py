@@ -15,6 +15,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'chat_{self.room_name}'
+        self.user = self.scope['user'] # the same as request.user but in WebsocketConsumer
 
         # Join room group
         await self.get_room()
@@ -24,6 +25,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         # Leavee room
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+
+        if not self.user.is_staff:
+            await self.set_room_closed()
 
     async def receive(self, text_data):
         # receive message from WebSocket (frontend)
@@ -64,6 +68,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @sync_to_async
     def get_room(self):
         self.room = Room.objects.get(uuid=self.room_name)
+
+    @sync_to_async
+    def set_room_closed(self):
+        self.room.status = Room.CLOSED
+        self.room.save()
 
     @sync_to_async
     def create_message(self, sent_by, message, agent):
